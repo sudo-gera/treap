@@ -32,7 +32,12 @@ struct item{
     }
     constexpr static void make(auto){}
     constexpr static void update(auto){}
-    constexpr static void to_sting(auto,auto&){}
+    constexpr static void to_string(auto node,auto&ss){
+        ss << node->value_.value;
+    }
+    constexpr operator size_t()const{
+        return value;
+    }
 };
 
 template<size_t b = 0,size_t e = 16>
@@ -61,6 +66,10 @@ constexpr void check(bool b){
     }
 }
 
+constexpr auto cmp(auto&& left, auto&& right){
+    return (left > right) - (left < right);
+}
+
 constexpr bool test(bool run, auto&&out, size_t seed){
     if (not run){return true;}
     vector<
@@ -74,27 +83,33 @@ constexpr bool test(bool run, auto&&out, size_t seed){
     treaps[0].second.push_back(treaps[0].first.begin());
     decltype(treaps)::value_type tp;
     vector<vector<size_t>> vectors(1);
+    size_t nums[] = {
+    };
+    // auto rand = [&,n=0]()mutable{return nums[n++];};
     fast_rand rand{seed};
     size_t op, value, current=0;
     auto operations = make_tuple(
         [&]{
             treaps.emplace_back();
-            auto& treap = treaps.back();
-            treap.second.push_back(treap.first.begin());
-            check(treap.first.begin() == treap.first.end());
-            current = treaps.size() - 1;
             vectors.emplace_back();
-        },
-        [&]{
-            treaps.emplace_back();
             auto& treap = treaps.back();
-            treap.first.emplace_root(value);
-            treap.second.push_back(treap.first.begin());
+            auto& vector = vectors.back();
+            for (size_t q=0;q<9;++q){
+                auto tmp = std::move(treap.first);
+                treap.first.emplace_root(value);
+                if (value % 2){
+                    treap.first << tmp;
+                }else{
+                    tmp >> treap.first;
+                }
+                value >>= 1;
+            }
+            for (auto it = treap.first.begin(); it != treap.first.end(); ++it){
+                treap.second.push_back(it);
+                vector.push_back(it->value);
+            }
             treap.second.push_back(treap.first.end());
-            check(treap.first.begin() != treap.first.end());
-            check(treap.first.begin() + 1 == treap.first.end());
-            current = treaps.size() - 1;
-            vectors.push_back({value});
+            check(treap.first.size() == 9);
         },
         [&]{
             treaps.emplace_back();
@@ -147,63 +162,149 @@ constexpr bool test(bool run, auto&&out, size_t seed){
             vector.resize(vector.size() - n);
             n += 1;
             check(n <= treap.second.size());
-            copy(treap.second.end() - n, treap.second.end(), back_inserter(treaps.back().second));
-            treap.second.resize(treap.second.size() - n);
-            treap.second.push_back(treap.first.end());
+            if (n == 1){
+                treaps.back().second.push_back(treaps.back().first.begin());
+            }else{
+                copy(treap.second.end() - n, treap.second.end(), back_inserter(treaps.back().second));
+                treap.second.resize(treap.second.size() - n);
+                treap.second.push_back(treap.first.end());
+            }
             current = treaps.size() - 1;
         },
         [&]{
-            
+            current = value % treaps.size();
         },
         [&]{
-            current = value % treaps.size();
+            auto index = value % treaps.size();
+            check(
+                cmp(vectors[current], vectors[index])
+             == 
+                cmp(treaps[current].first, treaps[index].first)
+            );
+        },
+        [&]{
+            if (treaps.size() > 1){
+                auto index = value % treaps.size();
+                index ^= index == current;
+                index %= treaps.size();
+                check(current < treaps.size());
+                check(index < treaps.size());
+                treaps[index].first >> treaps[current].first;
+                if (treaps[current].second.size() == 1){
+                    treaps[current].second = std::move(treaps[index].second);
+                }else{
+                    treaps[index].second.pop_back();
+                    treaps[current].second.insert(
+                        treaps[current].second.begin(),
+                        treaps[index].second.begin(),
+                        treaps[index].second.end()
+                    );
+                }
+                treaps[index].second.clear();
+                treaps[index].second.push_back(treaps[index].first.begin());
+                vectors[current].insert(
+                    vectors[current].begin(),
+                    vectors[index].begin(),
+                    vectors[index].end()
+                );
+                vectors[index].clear();
+                check(treaps[index].first.size() + 1 == treaps[index].second.size());
+                check(treaps[index].first.size() == vectors[index].size());
+                check(treaps[current].first.size() + 1 == treaps[current].second.size());
+                check(treaps[current].first.size() == vectors[current].size());
+                treaps.erase(treaps.begin() + index);
+                vectors.erase(vectors.begin() + index);
+                current -= current == treaps.size();
+            }
+        },
+        [&]{
+            if (treaps.size() > 1){
+                auto index = value % treaps.size();
+                index ^= index == current;
+                index %= treaps.size();
+                check(current < treaps.size());
+                check(index < treaps.size());
+                treaps[current].first << treaps[index].first;
+                if (treaps[current].second.size() == 1){
+                    treaps[current].second = std::move(treaps[index].second);
+                }else if (treaps[index].second.size() != 1){
+                    treaps[current].second.pop_back();
+                    treaps[current].second.insert(
+                        treaps[current].second.end(),
+                        treaps[index].second.begin(),
+                        treaps[index].second.end()
+                    );
+                }
+                treaps[index].second.clear();
+                treaps[index].second.push_back(treaps[index].first.begin());
+                vectors[current].insert(
+                    vectors[current].end(),
+                    vectors[index].begin(),
+                    vectors[index].end()
+                );
+                vectors[index].clear();
+                check(treaps[index].first.size() + 1 == treaps[index].second.size());
+                check(treaps[index].first.size() == vectors[index].size());
+                check(treaps[current].first.size() + 1 == treaps[current].second.size());
+                check(treaps[current].first.size() == vectors[current].size());
+                treaps.erase(treaps.begin() + index);
+                vectors.erase(vectors.begin() + index);
+                current -= current == treaps.size();
+            }
         }
     );
-    for (size_t q = 0; q < 512; ++q){
-        op = rand() % tuple_size_v<decltype(operations)>;
+    for (size_t q = 0; q < 32; ++q){
+        op = rand() % (tuple_size_v<decltype(operations)> + 2);
         value = rand();
-        out << current << " " << op << " " << value << "\n";
+        // out << treaps[current].first;
+        out << q << " " << current << " " << op << " " << value << " " << treaps.size() << " " << treaps[current].first.size() << "\n";
+        // out << op << ", " << value << ",\n";
         make_size_t_constexpr([&](auto op){
             if constexpr (op < tuple_size_v<decltype(operations)>){
                 get<op>(operations)();
+            }else{
+                get<tuple_size_v<decltype(operations)>-1-op%2>(operations)();
             }
         }, op);
-        auto& treap = treaps[current];
-        auto& vector = vectors[current];
+        // out << treaps[current].first;
         check(vectors.size() == treaps.size());
-        check(current < vectors.size());
-        check(treap.first.size() == vector.size());
-        check(treap.first.size() + 1 == treap.second.size());
-        auto it = treap.first.begin();
-        for (size_t q = 0; q < vector.size(); ++q){
-            check(it->value == vector[q]);
-            check(it == treap.second[q]);
-            check(&*it == &*treap.second[q]);
-            for (size_t w = 0; w < treap.second.size(); ++w){
-                check(&*it == &treap.second[w][q-w]);
+        for (size_t current = 0; current < treaps.size(); ++current){
+            auto& treap = treaps[current];
+            auto& vector = vectors[current];
+            check(current < vectors.size());
+            check(treap.first.size() == vector.size());
+            check(treap.first.size() + 1 == treap.second.size());
+            for (size_t q = 0; q < treap.second.size(); ++q){
+                for (size_t w = 0; w < treap.second.size(); ++w){
+                    // ic(current, treap.second.size(), q, w)
+                    // ic(treap.first.size())
+                    auto d = q - w;
+                    check(treap.second[q] - treap.second[w] == d);
+                    check(q >= w or treap.second[q]  < treap.second[w]);
+                    check(q <= w or treap.second[q]  > treap.second[w]);
+                    check(q == w or treap.second[q] != treap.second[w]);
+                    check(q >  w or treap.second[q] <= treap.second[w]);
+                    check(q <  w or treap.second[q] >= treap.second[w]);
+                    check(q != w or treap.second[q] == treap.second[w]);
+                    // ic(treap.second[q], treap.second[q]+-d)
+                    // ic(treap.second[w])
+                    check(treap.second[q] + -d == treap.second[w]);
+                    check(treap.second[q] -  d == treap.second[w]);
+                }
             }
-            ++it;
-        }
-        for (size_t q = 0; q < treap.second.size(); ++q){
-            for (size_t w = 0; w < treap.second.size(); ++w){
-                auto d = q - w;
-                check(treap.second[q] - treap.second[w] == d);
-                check(q >= w or treap.second[q]  < treap.second[w]);
-                check(q <= w or treap.second[q]  > treap.second[w]);
-                check(q == w or treap.second[q] != treap.second[w]);
-                check(q >  w or treap.second[q] <= treap.second[w]);
-                check(q <  w or treap.second[q] >= treap.second[w]);
-                check(q != w or treap.second[q] == treap.second[w]);
-                check(treap.second[q] + -d == treap.second[w]);
-                check(treap.second[q] -  d == treap.second[w]);
+            auto it = treap.first.begin();
+            for (size_t q = 0; q < vector.size(); ++q){
+                check(it->value == vector[q]);
+                check(it == treap.second[q]);
+                check(&*it == &*treap.second[q]);
+                for (size_t w = 0; w < treap.second.size(); ++w){
+                    check(&*it == &treap.second[w][q-w]);
+                }
+                ++it;
             }
+            check(it == treap.first.end());
+            check(it == treap.second.back());
         }
-        // Treap<item> another;
-        // check (treap.first >= another);
-        // check (another <= treap.first);
-        // for (size_t q = 0; q < vector.size(); ++q){
-        //     another <<= 
-        // }
     }
     return true;
 }
@@ -211,10 +312,10 @@ constexpr bool test(bool run, auto&&out, size_t seed){
 static_assert(test(1, null_out{}, constexpr_seed()));
 
 int main(){
-    size_t seed = 484357768;
+    size_t seed = 1678390810;
     seed = constexpr_seed();
     // seed = random_device()();
     cout << seed << endl;
     // test(1, cout, seed);
-    test(1, null_out{}, seed);
+    // test(1, null_out{}, seed);
 }

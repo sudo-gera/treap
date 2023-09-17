@@ -1,8 +1,14 @@
 #include <array>
 
+#   if __cplusplus <= 201703L
+#      define TREAP_20_CONSTEXPR
+#   else
+#      define TREAP_20_CONSTEXPR constexpr
+#   endif
+
 struct fast_rand{
     std::size_t state = 0x123456;
-    constexpr std::size_t operator()(){
+    TREAP_20_CONSTEXPR std::size_t operator()(){
         state = state << 3 ^ state >> 11;
         state = state >> 5 ^ state << 13;
         state = state << 7 ^ state >> 17;
@@ -12,7 +18,6 @@ struct fast_rand{
 template<typename T>
 struct Treap{
 private:
-
     struct Node{
         std::size_t priority_=0;
         std::array<Node*, 2> children_ = {nullptr,nullptr};
@@ -22,23 +27,23 @@ private:
         T value_;
 
         template<typename...CON_ARGS>
-        constexpr Node(fast_rand& rand, CON_ARGS&&...args):
+        TREAP_20_CONSTEXPR Node(fast_rand& rand, CON_ARGS&&...args):
             priority_(rand()),
             value_(std::forward<CON_ARGS&&>(args)...)
         {update(this);}
 
-        constexpr Node* get_child(bool num){
+        TREAP_20_CONSTEXPR Node* get_child(bool num){
             make(children_[num]);
             return children_[num];
         }
 
-        constexpr static void make(Node*root){
+        TREAP_20_CONSTEXPR static void make(Node*root){
             if (root){
                 T::make(root);
             }
         }
 
-        static void constexpr update(Node*root){
+        static void TREAP_20_CONSTEXPR update(Node*root){
             if (root){
                 std::size_t tmp[4] = {0,0,0,0};
                 for (std::size_t q=0;q<2;++q){
@@ -55,7 +60,7 @@ private:
             }
         }
 
-        static constexpr void del(Node* q){
+        static TREAP_20_CONSTEXPR void del(Node* q){
             if (not q){
                 return;
             }
@@ -64,7 +69,7 @@ private:
             delete q;
         }
 
-        static constexpr Node* merge(std::array<Node*, 2> roots, bool args_order_is_not_reversed){
+        static TREAP_20_CONSTEXPR Node* merge(std::array<Node*, 2> roots, bool args_order_is_not_reversed){
             if (not roots[0]) {return roots[1];}
             if (not roots[1]) {return roots[0];}
             auto new_root = roots[0]->priority_ < roots[1]->priority_;
@@ -75,7 +80,7 @@ private:
         }
 
         template<bool condition_tells_if_is_right=0,typename COND>
-        static constexpr std::array<Node*, 2> split(Node* root, COND&&condition){
+        static TREAP_20_CONSTEXPR std::array<Node*, 2> split(Node* root, COND&&condition){
             if (not root){return {nullptr,nullptr};}
             bool is_left = condition_tells_if_is_right ^ bool(condition(root));
             auto child = root->get_child(is_left);
@@ -127,8 +132,8 @@ private:
             prev_prev_node->value_ = prev_prev_node->save;
         }
 
-        static constexpr Node* add(Node* current, std::ptrdiff_t offset){
-            if (not current){return nullptr;}
+        static TREAP_20_CONSTEXPR std::pair<Node*, bool> add(Node* current, std::ptrdiff_t offset){
+            if (not current){return {nullptr, 0};}
             auto left = current->get_child(0);
             auto right = current->get_child(1);
             std::size_t left_size = left ? left->size_ : 0;
@@ -136,8 +141,9 @@ private:
             while (offset and current){
                 if (offset > (std::ptrdiff_t)right_size or -offset > (std::ptrdiff_t)left_size){
                     if (not current->parent_){
-                        current = nullptr;
-                        break;
+                        return {current, 1};
+                        // current = nullptr;
+                        // break;
                     }else if (current == current->parent_->children_[0]){
                         offset -= right_size + 1;
                         left = current;
@@ -169,10 +175,10 @@ private:
                     offset -= left_size + 1;
                 }
             }
-            return current;
+            return {current, 0};
         }
 
-        static constexpr std::ptrdiff_t root_offset(Node* current){
+        static TREAP_20_CONSTEXPR std::ptrdiff_t root_offset(Node* current){
             if (not current){
                 return 0;
             }
@@ -199,34 +205,34 @@ private:
     Node* root_ = nullptr;
     fast_rand rand_;
 public:
-    constexpr Treap(Node* root = nullptr):
+    TREAP_20_CONSTEXPR Treap(Node* root = nullptr):
         root_(root)
     {}
 
-    constexpr Treap(Treap&& other)noexcept{
+    TREAP_20_CONSTEXPR Treap(Treap&& other)noexcept{
         std::swap(root_, other.root_);
     }
 
-    constexpr auto&operator=(Treap&& other)noexcept{
+    TREAP_20_CONSTEXPR auto&operator=(Treap&& other)noexcept{
         std::swap(root_, other.root_);
         return *this;
     }
 
-    constexpr void clear(){
+    TREAP_20_CONSTEXPR void clear(){
         Node::del(root_);
         root_ = nullptr;
     }
 
-    constexpr ~Treap(){
+    TREAP_20_CONSTEXPR ~Treap(){
         clear();
     }
 
-    constexpr std::size_t size()const{
+    TREAP_20_CONSTEXPR std::size_t size()const{
         Node::make(root_);
         return root_ ? root_->size_ : 0;
     }
 
-    constexpr bool empty()const{
+    TREAP_20_CONSTEXPR bool empty()const{
         return not root_;
     }
 
@@ -245,75 +251,85 @@ private:
         Node* current_ = 0;
         bool is_end_ = 0;
     public:
-        constexpr const T& operator*()const{
+        TREAP_20_CONSTEXPR auto tuple()const{
+            return make_tuple(current_, is_end_);
+        }
+        TREAP_20_CONSTEXPR const T& operator*()const{
             return current_->value_;
         }
-        constexpr auto operator->()const{
+        TREAP_20_CONSTEXPR auto operator->()const{
             return &**this;
         }
-        constexpr const T& operator[](std::ptrdiff_t offset)const{
+        TREAP_20_CONSTEXPR const T& operator[](std::ptrdiff_t offset)const{
             return *(*this+offset);
         }
-        constexpr auto& operator+=(std::ptrdiff_t offset){
+        TREAP_20_CONSTEXPR auto& operator+=(std::ptrdiff_t offset){
+            if (not current_){
+                return *this;
+            }
             if (is_end_){
                 offset +=1;
                 is_end_ = 0;
             }
-            if (Node::add(current_, offset)){
-                current_ = Node::add(current_, offset);
+            auto tmp = Node::add(current_, offset);
+            if (not tmp.second){
+                current_ = tmp.first;
             }else{
-                current_ = Node::add(current_, offset-1);
+                current_ = tmp.first;
+                auto child = current_->get_child(1);
+                auto child_size = child ? child->size_ : 0;
+                current_ = Node::add(current_, child_size).first;
                 is_end_ = 1;
             }
             return *this;
         }
-        constexpr auto&operator-=(std::ptrdiff_t add){
+        TREAP_20_CONSTEXPR auto&operator-=(std::ptrdiff_t add){
             return this[0]+=-add;
         }
-        constexpr auto&operator++(){
+        TREAP_20_CONSTEXPR auto&operator++(){
             return this[0]+=1;
         }
-        constexpr auto&operator--(){
+        TREAP_20_CONSTEXPR auto&operator--(){
             return this[0]+=-1;
         }
-        constexpr auto&operator++(int){
+        TREAP_20_CONSTEXPR auto&operator++(int){
             auto tmp = *this;
             this[0]++;
             return tmp;
         }
-        constexpr auto&operator--(int){
+        TREAP_20_CONSTEXPR auto&operator--(int){
             auto tmp = *this;
             this[0]--;
             return tmp;
         }
-        constexpr auto root_offset()const{
+        TREAP_20_CONSTEXPR auto root_offset()const{
             return Node::root_offset(current_)+is_end_;
         }
-        constexpr static auto make_iter(Node* current, bool is_end){
+        TREAP_20_CONSTEXPR static auto make_iter(Node* current, bool is_end){
             return Iter{current, is_end};
         }
 
-        friend constexpr auto operator+(Iter left, std::ptrdiff_t right){
+        friend TREAP_20_CONSTEXPR auto operator+(Iter left, std::ptrdiff_t right){
             return left+=right;
         }
 
-        friend constexpr auto operator+(std::ptrdiff_t left, Iter right){
+        friend TREAP_20_CONSTEXPR auto operator+(std::ptrdiff_t left, Iter right){
             return right+=left;
         }
 
-        friend constexpr auto operator-(Iter left, std::ptrdiff_t right){
+        friend TREAP_20_CONSTEXPR auto operator-(Iter left, std::ptrdiff_t right){
             return left-=right;
         }
 
-        friend constexpr auto operator-(Iter left, Iter right){
+        friend TREAP_20_CONSTEXPR auto operator-(Iter left, Iter right){
             return left.root_offset() - right.root_offset();
         }
 
-        friend constexpr bool operator==(Iter left, Iter right){
+        friend TREAP_20_CONSTEXPR bool operator==(Iter left, Iter right){
             return left.current_ == right.current_ and left.is_end_ == right.is_end_;
         }
 
-        friend constexpr auto operator<=>(Iter left, Iter right){
+        friend TREAP_20_CONSTEXPR auto operator<=>(Iter left, Iter right){
             return left - right <=> 0;
         }
 
@@ -322,27 +338,27 @@ public:
 
     template<typename ITER>
     struct IsIteratorImpl{
-        static constexpr bool value_ = std::is_same_v<
+        static TREAP_20_CONSTEXPR bool value_ = std::is_same_v<
             std::decay_t<Iter>, ITER
         >;
     };
 
     template<typename ITER>
-    static constexpr bool IsIterator = IsIteratorImpl<ITER>::value_;
+    static TREAP_20_CONSTEXPR bool IsIterator = IsIteratorImpl<ITER>::value_;
 
-    constexpr Iter root()const{
+    TREAP_20_CONSTEXPR Iter root()const{
         return Iter::make_iter(root_, empty());
         // return {root_, empty()};
     }
 
 private:
     template<bool end>
-    constexpr auto get_iter()const{
+    TREAP_20_CONSTEXPR auto get_iter()const{
         auto it = root();
         if (not empty()){
             Node::make(root_);
             auto child = root_->get_child(end);
-            if constexpr(end){
+            if TREAP_20_CONSTEXPR(end){
                 it += child ? child->size_ : 0;
             }else{
                 it -= child ? child->size_ : 0;
@@ -352,32 +368,32 @@ private:
         return it;
     }
 public:
-    constexpr auto cbegin()const{
+    TREAP_20_CONSTEXPR auto cbegin()const{
         return get_iter<0>();
     }
-    constexpr auto cend()const{
+    TREAP_20_CONSTEXPR auto cend()const{
         return get_iter<1>();
     }
-    constexpr auto begin()const{
+    TREAP_20_CONSTEXPR auto begin()const{
         return get_iter<0>();
     }
-    constexpr auto end()const{
+    TREAP_20_CONSTEXPR auto end()const{
         return get_iter<1>();
     }
-    constexpr auto rcbegin()const{
+    TREAP_20_CONSTEXPR auto rcbegin()const{
         return std::make_reverse_iterator(get_iter<1>());
     }
-    constexpr auto rcend()const{
+    TREAP_20_CONSTEXPR auto rcend()const{
         return std::make_reverse_iterator(get_iter<0>());
     }
-    constexpr auto rbegin()const{
+    TREAP_20_CONSTEXPR auto rbegin()const{
         return std::make_reverse_iterator(get_iter<1>());
     }
-    constexpr auto rend()const{
+    TREAP_20_CONSTEXPR auto rend()const{
         return std::make_reverse_iterator(get_iter<0>());
     }
     template<typename...CON_ARGS>
-    constexpr void emplace_root(CON_ARGS&&...args){
+    TREAP_20_CONSTEXPR void emplace_root(CON_ARGS&&...args){
         clear();
         root_ = new Node(rand_, std::forward<CON_ARGS>(args)...);
     }
@@ -395,14 +411,14 @@ public:
     using const_reverse_iterator = const std::reverse_iterator<Iter>;
 
     template<typename UnaryPredicate>
-    friend constexpr Treap operator|(Treap&left, UnaryPredicate&& is_right){
+    friend TREAP_20_CONSTEXPR Treap operator|(Treap&left, UnaryPredicate&& is_right){
         auto pair = Treap::Node::template split<1>(left.root_, std::forward<UnaryPredicate>(is_right));
         left.root_ = pair[0];
         return Treap<T>(pair[1]);
     }
 
     template<typename UnaryPredicate>
-    friend constexpr Treap operator|(UnaryPredicate&& is_left, Treap&right){
+    friend TREAP_20_CONSTEXPR Treap operator|(UnaryPredicate&& is_left, Treap&right){
         auto pair = Treap::Node::template split<0>(right.root_, std::forward<UnaryPredicate>(is_left));
         right.root_ = pair[1];
         return Treap<T>(pair[0]);
@@ -412,50 +428,61 @@ public:
         return treap.print(out);
     }
 
-    friend constexpr auto& operator<<(Treap&left, Treap&right){
+    friend TREAP_20_CONSTEXPR auto& operator<<(Treap&left, Treap&right){
         left.root_ = Treap::Node::merge({left.root_, right.root_}, true);
         right.root_ = nullptr;
         return left;
     }
 
-    friend constexpr auto& operator<<(Treap&left, Treap&&right){
+    friend TREAP_20_CONSTEXPR auto& operator<<(Treap&left, Treap&&right){
         left.root_ = Treap::Node::merge({left.root_, right.root_}, true);
         right.root_ = nullptr;
         return left;
     }
 
-    friend constexpr auto& operator>>(Treap&left, Treap&right){
+    friend TREAP_20_CONSTEXPR auto& operator>>(Treap&left, Treap&right){
         right.root_ = Treap::Node::merge({left.root_, right.root_}, true);
         left.root_ = nullptr;
         return right;
     }
 
-    friend constexpr auto& operator>>(Treap&&left, Treap&right){
+    friend TREAP_20_CONSTEXPR auto& operator>>(Treap&&left, Treap&right){
         right.root_ = Treap::Node::merge({left.root_, right.root_}, true);
         left.root_ = nullptr;
         return right;
     }
 
-    const auto& last()const{
+    const auto& back()const{
         return *rbegin();
     }
 
-    const auto& first()const{
+    const auto& front()const{
         return *begin();
     }
 
-    friend constexpr auto operator<=>(const Treap&left, const Treap& right){
-        for (iterator left_it = left.begin(), right_it = right.begin();
-            left_it != left.end() and right_it != right.end();
-            ++left_it , ++right_it
-        ){
-            auto diff = *left_it <=> *right_it;
-            if (diff != 0){
-                return diff;
-            }
-        }
-        return left.size() <=> right.size();
+private:
+    friend TREAP_20_CONSTEXPR auto operator==(const Treap& left, const Treap& right){
+        return left.size() == right.size() and std::equal(left.begin(), left.end(), right.begin());
+    }
+
+    friend TREAP_20_CONSTEXPR auto operator<(const Treap& left, const Treap& right){
+        return std::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
+    }
+
+    friend TREAP_20_CONSTEXPR auto operator>(const Treap& left, const Treap& right){
+        return right < left;
+    }
+
+    friend TREAP_20_CONSTEXPR auto operator!=(const Treap& left, const Treap& right){
+        return not (left == right);
+    }
+
+    friend TREAP_20_CONSTEXPR auto operator<=(const Treap& left, const Treap& right){
+        return not (left > right);
+    }
+
+    friend TREAP_20_CONSTEXPR auto operator>=(const Treap& left, const Treap& right){
+        return not (left < right);
     }
 };
-
 
