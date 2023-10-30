@@ -30,9 +30,10 @@ struct item{
         value = other.value;
         return *this;
     }
-    constexpr static void make(auto){}
-    constexpr static void update(auto){}
-    constexpr static void to_string(auto node,auto&ss){
+    constexpr static void make(void*){}
+    constexpr static void update(void*){}
+    template<typename NODE, typename OSTREAM>
+    constexpr static void to_string(NODE* node,OSTREAM& ss){
         ss << node->value_.value;
     }
     constexpr operator size_t()const{
@@ -40,8 +41,8 @@ struct item{
     }
 };
 
-template<size_t b = 0,size_t e = 16>
-constexpr decltype(auto) make_size_t_constexpr(auto&& f, size_t n){
+template<size_t b = 0, size_t e = 16, typename FUNC>
+constexpr decltype(auto) make_size_t_constexpr(FUNC&& f, size_t n){
     assert(b <= n and n < e);
     if constexpr(b + 1 == e){
         return f(std::integral_constant<size_t, b>());
@@ -66,17 +67,19 @@ constexpr void check(bool b){
     }
 }
 
-constexpr auto cmp(auto&& left, auto&& right){
+template<typename T>
+constexpr auto cmp(T&& left, T&& right){
     return (left > right) - (left < right);
 }
 
-constexpr bool test(bool run, auto&&out, size_t seed){
+template<typename OSTREAM>
+TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM&&out, size_t seed){
     if (not run){return true;}
     vector<
         pair<
-            Treap<item>, 
+            BasicTreap<item>, 
             vector<
-                Treap<item>::iterator
+                BasicTreap<item>::iterator
             >
         >
     > treaps(1);
@@ -86,7 +89,7 @@ constexpr bool test(bool run, auto&&out, size_t seed){
     size_t nums[] = {
     };
     // auto rand = [&,n=0]()mutable{return nums[n++];};
-    fast_rand rand{seed};
+    FastRand rand{seed};
     size_t op, value, current=0;
     auto operations = make_tuple(
         [&]{
@@ -311,14 +314,16 @@ constexpr bool test(bool run, auto&&out, size_t seed){
     }
     return true;
 }
-
-// static_assert(test(1, null_out{}, constexpr_seed()));
+#  if TREAP_STD_VER > 17
+    static_assert(test(1, null_out{}, constexpr_seed()));
+#  endif
 
 int main(){
     size_t seed = 1678390810;
     seed = constexpr_seed();
-    // seed = random_device()();
     cout << seed << endl;
-    // test(1, cout, seed);
+    seed = random_device()();
+    cout << seed << endl;
+    test(1, cout, seed);
     // test(1, null_out{}, seed);
 }

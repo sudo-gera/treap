@@ -1,7 +1,7 @@
 #include "treap.hpp"
 
 template<typename T>
-struct ImplicitTreap:Treap<T>{
+struct ImplicitTreap:BasicTreap<T>{
     
 };
 

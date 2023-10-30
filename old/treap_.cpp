@@ -205,7 +205,7 @@ constexpr bool test(bool _r,auto seed){
     // seed=random_device()();
     // seed = make_seed();
     // auto rand=mt19937(seed);
-    auto rand=fast_rand(seed);
+    auto rand=FastRand(seed);
     cout<<seed<<"\n";
     auto g=[&](size_t q,size_t w,size_t e,size_t r,size_t t,size_t y,bool h=0)constexpr{
         auto f = make_tuple(

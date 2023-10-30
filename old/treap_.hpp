@@ -19,9 +19,9 @@ using ll=long long int;
 
 #define get(a) auto a##_s=a?a->size:0;auto a##_z=a?a->get_child(0):0;auto a##_x=a?a->get_child(1):0;auto a##_z_s=a##_z?a##_z->size:0;auto a##_x_s=a##_x?a##_x->size:0;
 
-struct fast_rand{
+struct FastRand{
     size_t state=1;
-    constexpr fast_rand(size_t state=1):
+    constexpr FastRand(size_t state=1):
         state(state){}
     constexpr auto operator()(){
         state ^= state << 21;
@@ -35,7 +35,7 @@ struct fast_rand{
 };
 
 template<typename T>
-struct Treap{
+struct BasicTreap{
     struct Node{
         size_t priority=0;
         std::array<Node*, 2> children = {nullptr,nullptr};
@@ -49,7 +49,7 @@ struct Treap{
         } value;
 
         template<typename...CON_ARGS>
-        constexpr Node(fast_rand&rand,size_t,CON_ARGS&&...args):
+        constexpr Node(FastRand&rand,size_t,CON_ARGS&&...args):
             priority(rand),
             value({0})
         {
@@ -132,19 +132,19 @@ struct Treap{
             T::check(root);
         }
 
-        struct print_node{
+        struct PrintNode{
             size_t value = 0;
             size_t save = 0;
-            print_node* next = nullptr;
+            PrintNode* next = nullptr;
         };
 
-        static void print(Node* root,auto& ss,print_node* start=nullptr, print_node*prev_prev_node=nullptr){
+        static void print(Node* root,auto& ss,PrintNode* start=nullptr, PrintNode*prev_prev_node=nullptr){
             if (not root){
                 return;
             }
             if (not start){
-                print_node prev1{3};
-                print_node prev2{0, 0, &prev1};
+                PrintNode prev1{3};
+                PrintNode prev2{0, 0, &prev1};
                 print(root, ss, &prev1, &prev2);
                 return;
             }
@@ -152,11 +152,11 @@ struct Treap{
             if (prev_prev_node->value == prev_prev_node->next->value){
                 prev_prev_node->value = 0;
             }
-            print_node node;
+            PrintNode node;
             prev_prev_node->next->next = &node;
             node.value = 2;
             print(root->children[0], ss, start, prev_prev_node->next);
-            for (print_node* n = start; n != &node; n = n->next){
+            for (PrintNode* n = start; n != &node; n = n->next){
                 char const* strs[]={" ", " ", "┃", "┗", "┃", "┏", "", ""};
                 ss << strs[n->value * 2 + (n == prev_prev_node->next)];
             }
@@ -272,18 +272,18 @@ struct Treap{
 
     };
     Node* root = nullptr;
-    fast_rand rand;
+    FastRand rand;
     // Node*& current=root;
     #define current root
-    constexpr Treap(Node*current=nullptr):root(current){}
-    constexpr Treap(Treap&&other)noexcept{
+    constexpr BasicTreap(Node*current=nullptr):root(current){}
+    constexpr BasicTreap(BasicTreap&&other)noexcept{
         std::swap(root, other.root);
     }
-    constexpr auto&operator=(Treap&&other)noexcept{
+    constexpr auto&operator=(BasicTreap&&other)noexcept{
         std::swap(root, other.root);
         return *this;
     }
-    constexpr ~Treap(){
+    constexpr ~BasicTreap(){
         Node::del(root);
     }
 
@@ -361,8 +361,8 @@ constexpr auto operator-(auto q, auto e)->std::decay_t<decltype(q-=e)>{
 }
 
 template<typename T>
-constexpr auto& operator<<(Treap<T>&left, Treap<T>&right){
-    left.root = Treap<T>::Node::merge(left.root, right.root);
+constexpr auto& operator<<(BasicTreap<T>&left, BasicTreap<T>&right){
+    left.root = BasicTreap<T>::Node::merge(left.root, right.root);
     right.root = nullptr;
     return left;
 }
@@ -372,24 +372,24 @@ constexpr auto operator<=>(auto q,auto e)->decltype(q.get_offset() - e.get_offse
 }
 
 template<typename T>
-constexpr auto& operator>>(Treap<T>&left, Treap<T>&right){
-    right.root = Treap<T>::Node::merge({left.root, right.root}, 1);
+constexpr auto& operator>>(BasicTreap<T>&left, BasicTreap<T>&right){
+    right.root = BasicTreap<T>::Node::merge({left.root, right.root}, 1);
     left.root = nullptr;
     return right;
 }
 
-template<typename T,typename UnaryPredicate>
-constexpr Treap<T> operator|(Treap<T>&left, UnaryPredicate&& is_right){
-    auto pair = Treap<T>::Node::template split<1>(left.current, std::forward<UnaryPredicate>(is_right));
+template<typename T,typename UNARY_PREDICATE>
+constexpr BasicTreap<T> operator|(BasicTreap<T>&left, UNARY_PREDICATE&& is_right){
+    auto pair = BasicTreap<T>::Node::template split<1>(left.current, std::forward<UNARY_PREDICATE>(is_right));
     left.current = pair[0];
-    return Treap<T>(pair[1]);
+    return BasicTreap<T>(pair[1]);
 }
 
-template<typename T,typename UnaryPredicate>
-constexpr Treap<T> operator|(UnaryPredicate&& is_left, Treap<T>&right){
-    auto pair = Treap<T>::Node::split(right.current,std::forward<UnaryPredicate>(is_left));
+template<typename T,typename UNARY_PREDICATE>
+constexpr BasicTreap<T> operator|(UNARY_PREDICATE&& is_left, BasicTreap<T>&right){
+    auto pair = BasicTreap<T>::Node::split(right.current,std::forward<UNARY_PREDICATE>(is_left));
     right.current = pair[1];
-    return Treap<T>(pair[0]);
+    return BasicTreap<T>(pair[0]);
 }
 
 struct item{
@@ -571,8 +571,8 @@ struct item{
     }
 };
 
-struct treap:Treap<item>{
-    constexpr Treap cut_left(ll n){
+struct treap:BasicTreap<item>{
+    constexpr BasicTreap cut_left(ll n){
         auto tmp=[n](Node* t)mutable{
             get(t);
             if (n>=t_z_s+1){
@@ -583,7 +583,7 @@ struct treap:Treap<item>{
         };
         return tmp | *this;
     }
-    constexpr Treap cut_right(ll n){
+    constexpr BasicTreap cut_right(ll n){
         auto tmp=[n](Node* t)mutable{
             get(t);
             if (n>=t_x_s+1){
@@ -594,7 +594,7 @@ struct treap:Treap<item>{
         };
         return *this | tmp;
     }
-    constexpr auto update(ll n,Treap& _q){
+    constexpr auto update(ll n,BasicTreap& _q){
         assert(_q.size()==1);
         auto priority=cut_left(n);
         auto r=cut_left(1);
@@ -738,7 +738,7 @@ struct treap:Treap<item>{
 //     ll sum(){}
 //     ll size(){}
 //     treap update(ll,treap){}
-//     // Treap<item>::Node*current=nullptr;
+//     // BasicTreap<item>::Node*current=nullptr;
 // };
 
 
