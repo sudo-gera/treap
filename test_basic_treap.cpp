@@ -55,9 +55,9 @@ TEST_CASE(change_size) {
   t.emplace_root(999);
   constexpr_assert(not t.empty());
   constexpr_assert(t.size() == 1);
-  constexpr_assert(t.root()->value == 999);
-  t.root_node()->value_.value = 888;
-  constexpr_assert(t.root_node()->value_.value == 888);
+  constexpr_assert(t.root()->value_ == 999);
+  t.root()->value_.value = 888;
+  constexpr_assert(t.root()->value_.value == 888);
 }
 
 TEST_CASE(merge) {
@@ -68,7 +68,7 @@ TEST_CASE(merge) {
   t << y;
   constexpr_assert(t.size() == 2);
   constexpr_assert(y.size() == 0);
-  constexpr_assert(t.root()->value == 123 or t.root()->value == 321);
+  constexpr_assert(t.root()->value_ == 123 or t.root()->value_ == 321);
 }
 
 TEST_CASE(cmp) {
@@ -208,7 +208,7 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM &&out, size_t seed) {
         constexpr_assert(treap.first.size() == vector.size());
         size_t n = value % (treap.first.size() + 1);
         treaps.back().first =
-            [n](decltype(treaps[0].first.root_node()) t) mutable {
+            [n](decltype(treaps[0].first.root()) t) mutable {
               auto child = t->get_child(0);
               auto child_size = child ? child->size_ : 0;
               if (n >= child_size + 1) {
@@ -246,7 +246,7 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM &&out, size_t seed) {
         constexpr_assert(treap.first.size() == vector.size());
         size_t n = value % (treap.first.size() + 1);
         treaps.back().first =
-            treap.first | [n](decltype(treaps[0].first.root_node()) t) mutable {
+            treap.first | [n](decltype(treaps[0].first.root()) t) mutable {
               auto child = t->get_child(1);
               auto child_size = child ? child->size_ : 0;
               if (n >= child_size + 1) {

@@ -212,7 +212,7 @@ template <typename T> struct BasicTreap {
       return ans;
     }
   };
-  
+
   // CONSTRUCTOR DESTRUCTOR
 
 private:
@@ -266,8 +266,8 @@ private:
     using reference = const T &;
     using iterator_category = std::random_access_iterator_tag;
     using param = T;
-    Node *current_ = 0;
-    bool is_end_ = 0;
+    Node *current_ = nullptr;
+    bool is_end_ = false;
 
   public:
     // TREAP_CONSTEXPR_AFTER_CXX17
@@ -275,11 +275,16 @@ private:
     //     return make_tuple(current_, is_end_);
     // }
     TREAP_CONSTEXPR_AFTER_CXX17
-    static Iter make_iter(Node *current, bool is_end) {
+    static Iter make_iter(Node *current = nullptr, bool is_end = false) {
       Iter res;
       res.current_ = current;
       res.is_end_ = is_end;
       return res;
+    }
+
+    // TODO: const Node*
+    operator Node*(){
+      return current_;
     }
 
     // ITER DEREFERENCE
@@ -386,15 +391,12 @@ private:
 
 public:
   TREAP_CONSTEXPR_AFTER_CXX17
-  Iter root() const { return Iter::make_iter(root_, empty()); }
-
-  TREAP_CONSTEXPR_AFTER_CXX17
-  Node* root_node() const { return root_; }
+  Node* root() const { return root_; }
 
 private:
   template <size_t iter_index>
   TREAP_CONSTEXPR_AFTER_CXX17 Iter get_iter() const {
-    auto it = root();
+    auto it = Iter::make_iter(root());
     if (not empty()) {
       Node::make(root_);
       auto child = root_->get_child(iter_index);
