@@ -11,12 +11,12 @@ Node has several members:
     std::size_t height_; // height of subtree, 1 if no children
     T value_; // actual value, all other values needed by user-defined features should be members of T.
 
-All members are allowed for changing by `T::make`, `T::update`, `treap::root_node()`.
+All members are allowed for changing by `T::make`, `T::update`, `treap::root()`.
 ## Requirements for T:
 ### `static void make(Node*)`
 Should make all promises stored in given node and reassign them to children. After calling, given node should be free from any promises.
 ### `static void update(Node*)`
-Called after each change of `children` member of given node. Should recalculate all values. Members `size_` and `height_` are precalculated before the call.
+Called after each change of `children` member of given node. Should recalculate all values. Members `size_`, `height_` and childrens' `parent_` are updated before the call.
 ### `static void to_string(Node*, ostream&)`
 Called for ostream &lt;&lt; treap.
 ### Precalculated values and promises
@@ -46,7 +46,7 @@ Requires T to be copyable.
 ### operators for lexicographical compare
 ### `treapA << treapB`
 Concat (aka merge) treapA and treapB (in this order). Write result to treapA. TreapB would be empty.
-### `treap1 >> treap2`
+### `treapA >> treapB`
 Concat (aka merge) treapA and treapB (in this order). Write result to treapB. TreapA would be empty.
 ### `bool IsLeft(Node*) | treap`
 Cut several nodes from left(aka split treap).
