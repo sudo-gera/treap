@@ -42,6 +42,7 @@ Requires T to be copyable.
 ### size()
 ### empty()
 ### clear()
+### swap()
 ### operators for lexicographical compare
 ### `treapA << treapB`
 Concat (aka merge) treapA and treapB (in this order). Write result to treapA. TreapB would be empty.
@@ -89,6 +90,7 @@ Iterators have two members:
 If treap is not empty, `is_end_` can be true if and only if `current_` is last node in treap.
 If treap is empty, `is_end_` is always true and `current_` is `nullptr`.
 It is important to know because it helps to understand when iterators are invalidated and when are not.
+Not equal to `end()` iterators are invalidated only if element is deleted or root node is modified.
 
 Iterators meet all requirements of bidirectional iterators.
 Iterators meet almost all requirements of random access iterators, except that they work `O(log(n))` on all operations that are not checked by bidirectional requirements. `(n == size())`
@@ -101,4 +103,4 @@ If bool is false, creates iterator to given node.
 If bool is true and Node* points to last element, creates end() iterator.
 Otherwise behavior is undefined.
 
-
+### begin, end, cbegin, cend, rbegin, rend, crbegin, crend

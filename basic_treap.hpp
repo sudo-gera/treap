@@ -1,5 +1,6 @@
 #include "tools.hpp"
 #include <array>
+#include <cassert>
 
 template <typename T> struct BasicTreap {
   struct Node {
@@ -27,6 +28,7 @@ template <typename T> struct BasicTreap {
       if (root) {
         T::make(root);
       }
+      // check(root);
     }
 
     TREAP_CONSTEXPR_AFTER_CXX17
@@ -42,12 +44,35 @@ template <typename T> struct BasicTreap {
             children_size[q] = child->size_;
           }
         }
-        root->height_ = children_height[0] > children_height[1]
-                            ? children_height[0]
-                            : children_height[1];
+        root->height_ =
+            1 + (children_height[0] > children_height[1] ? children_height[0]
+                                                         : children_height[1]);
         root->size_ = children_size[0] + 1 + children_size[1];
         T::update(root);
       }
+      // check(root);
+    }
+
+    TREAP_CONSTEXPR_AFTER_CXX17
+    static void check(Node *root) {
+      if (not root) {
+        return;
+      }
+      assert(root->height_ < 128);
+      check(root->children_[0]);
+      check(root->children_[1]);
+      size_t size[2] = {0, 0};
+      size_t height[2] = {0, 0};
+      for (size_t q = 0; q < 2; ++q) {
+        if (root->children_[q]) {
+          Node *child = root->children_[q];
+          assert(root == child->parent_);
+          size[q] = child->size_;
+          height[q] = child->height_;
+        }
+      }
+      assert(size[0] + 1 + size[1] == root->size_);
+      assert(std::max(height[0], height[1]) + 1 == root->height_);
     }
 
     TREAP_CONSTEXPR_AFTER_CXX17
@@ -69,6 +94,7 @@ template <typename T> struct BasicTreap {
       if (not roots[1]) {
         return roots[0];
       }
+      assert(roots[0] != roots[1]);
       auto new_root = roots[0]->priority_ < roots[1]->priority_;
       auto child = new_root ^ args_order_is_not_reversed;
       roots[new_root]->children_[child] = merge(
@@ -215,7 +241,7 @@ template <typename T> struct BasicTreap {
 
   // CONSTRUCTOR DESTRUCTOR
 
-private:
+  // private:
   Node *root_ = nullptr;
   FastRand rand_;
   TREAP_CONSTEXPR_AFTER_CXX17
@@ -224,6 +250,9 @@ private:
 public:
   TREAP_CONSTEXPR_AFTER_CXX17
   BasicTreap() = default;
+
+  TREAP_CONSTEXPR_AFTER_CXX17
+  void swap(BasicTreap &other) noexcept { std::swap(root_, other.root_); }
 
   TREAP_CONSTEXPR_AFTER_CXX17
   BasicTreap(BasicTreap &&other) noexcept { std::swap(root_, other.root_); }
@@ -235,8 +264,8 @@ public:
   }
 
   TREAP_CONSTEXPR_AFTER_CXX17
-  BasicTreap(const BasicTreap &other) noexcept {
-    for (auto &q: other){
+  BasicTreap(const BasicTreap &other) {
+    for (auto &q : other) {
       BasicTreap t;
       t.emplace_root(q);
       *this << t;
@@ -244,10 +273,14 @@ public:
   }
 
   TREAP_CONSTEXPR_AFTER_CXX17
-  BasicTreap &operator=(const BasicTreap &other) noexcept {
-    if (this != &other){
-      this->~BasicTreap();
-      new(this)BasicTreap(other);
+  BasicTreap &operator=(const BasicTreap &other) {
+    if (this != &other) {
+      clear();
+      for (auto &q : other) {
+        BasicTreap t;
+        t.emplace_root(q);
+        *this << t;
+      }
     }
     return *this;
   }
@@ -257,7 +290,7 @@ public:
 
   // ITERATOR
 
-private:
+protected:
   struct Iter {
     // private:
     using difference_type = std::ptrdiff_t;
@@ -274,18 +307,17 @@ private:
     // auto tuple()const{
     //     return make_tuple(current_, is_end_);
     // }
-    TREAP_CONSTEXPR_AFTER_CXX17
-    static Iter make_iter(Node *current = nullptr, bool is_end = false) {
-      Iter res;
-      res.current_ = current;
-      res.is_end_ = is_end;
-      return res;
-    }
+    // TREAP_CONSTEXPR_AFTER_CXX17
+    // static Iter make_iter(Node *current = nullptr, bool is_end = false) {
+    //   Iter res;
+    //   res.current_ = current;
+    //   res.is_end_ = is_end;
+    //   return res;
+    // }
 
     // TODO: const Node*
-    operator Node*(){
-      return current_;
-    }
+    TREAP_CONSTEXPR_AFTER_CXX17
+    operator Node *() { return current_; }
 
     // ITER DEREFERENCE
 
@@ -391,12 +423,12 @@ private:
 
 public:
   TREAP_CONSTEXPR_AFTER_CXX17
-  Node* root() const { return root_; }
+  Node *root() const { return root_; }
 
 private:
   template <size_t iter_index>
   TREAP_CONSTEXPR_AFTER_CXX17 Iter get_iter() const {
-    auto it = Iter::make_iter(root());
+    auto it = Iter{root()};
     if (not empty()) {
       Node::make(root_);
       auto child = root_->get_child(iter_index);
@@ -458,8 +490,9 @@ public:
   // IO
 
   template <typename OSTREAM>
-  TREAP_CONSTEXPR_AFTER_CXX17 friend OSTREAM &operator<<(OSTREAM &out,
-                                                         BasicTreap &treap) {
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      not std::is_base_of_v<BasicTreap, OSTREAM>, OSTREAM> &
+  operator<<(OSTREAM &out, BasicTreap &treap) {
     Node::print(treap.root_, out);
     return out;
   }
@@ -480,48 +513,62 @@ public:
 
   // SPLIT AND MERGE
 
-  template <typename UNARY_PREDICATE>
-  TREAP_CONSTEXPR_AFTER_CXX17 friend BasicTreap
-  operator|(BasicTreap &left, UNARY_PREDICATE &&is_right) {
-    auto pair = BasicTreap::Node::template split<1>(
+  template <typename UNARY_PREDICATE, typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP> and
+          std::is_invocable_v<UNARY_PREDICATE, BasicTreap::Node *>,
+      TREAP>
+  operator|(TREAP &left, UNARY_PREDICATE &&is_right) {
+    auto pair = Node::template split<1>(
         left.root_, std::forward<UNARY_PREDICATE>(is_right));
     left.root_ = pair[0];
-    return BasicTreap<T>(pair[1]);
+    return {pair[1]};
   }
 
-  template <typename UNARY_PREDICATE>
-  TREAP_CONSTEXPR_AFTER_CXX17 friend BasicTreap
-  operator|(UNARY_PREDICATE &&is_left, BasicTreap &right) {
-    auto pair = BasicTreap::Node::template split<0>(
-        right.root_, std::forward<UNARY_PREDICATE>(is_left));
+  template <typename UNARY_PREDICATE, typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP> and
+          std::is_invocable_v<UNARY_PREDICATE, BasicTreap::Node *>,
+      TREAP>
+  operator|(UNARY_PREDICATE &&is_left, TREAP &right) {
+    auto pair = Node::template split<0>(right.root_,
+                                        std::forward<UNARY_PREDICATE>(is_left));
     right.root_ = pair[1];
-    return BasicTreap<T>(pair[0]);
+    return {pair[0]};
   }
 
-  TREAP_CONSTEXPR_AFTER_CXX17
-  friend BasicTreap &operator<<(BasicTreap &left, BasicTreap &right) {
-    left.root_ = BasicTreap::Node::merge({left.root_, right.root_}, true);
+  template <typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP>, TREAP> &
+  operator<<(TREAP &left, TREAP &right) {
+    left.root_ = Node::merge({left.root_, right.root_}, true);
     right.root_ = nullptr;
     return left;
   }
 
-  TREAP_CONSTEXPR_AFTER_CXX17
-  friend BasicTreap &operator<<(BasicTreap &left, BasicTreap &&right) {
-    left.root_ = BasicTreap::Node::merge({left.root_, right.root_}, true);
+  template <typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP>, TREAP> &
+  operator<<(TREAP &left, TREAP &&right) {
+    left.root_ = Node::merge({left.root_, right.root_}, true);
     right.root_ = nullptr;
     return left;
   }
 
-  TREAP_CONSTEXPR_AFTER_CXX17
-  friend BasicTreap &operator>>(BasicTreap &left, BasicTreap &right) {
-    right.root_ = BasicTreap::Node::merge({left.root_, right.root_}, true);
+  template <typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP>, TREAP> &
+  operator>>(TREAP &left, TREAP &right) {
+    right.root_ = Node::merge({left.root_, right.root_}, true);
     left.root_ = nullptr;
     return right;
   }
 
-  TREAP_CONSTEXPR_AFTER_CXX17
-  friend BasicTreap &operator>>(BasicTreap &&left, BasicTreap &right) {
-    right.root_ = BasicTreap::Node::merge({left.root_, right.root_}, true);
+  template <typename TREAP>
+  TREAP_CONSTEXPR_AFTER_CXX17 friend std::enable_if_t<
+      std::is_base_of_v<BasicTreap, TREAP>, TREAP> &
+  operator>>(TREAP &&left, TREAP &right) {
+    right.root_ = Node::merge({left.root_, right.root_}, true);
     left.root_ = nullptr;
     return right;
   }

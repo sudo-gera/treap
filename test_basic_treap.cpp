@@ -7,21 +7,6 @@ struct item {
   size_t value = 0;
   constexpr item(size_t val = 0) : value(val) {}
   constexpr item(item &&other) = delete;
-  // constexpr item(item&&other)noexcept{
-  //     swap(value, other.value);
-  // }
-  // constexpr item(const item&&other)noexcept{
-  //     value = other.value;
-  // }
-  // constexpr auto&operator=(item&&other){
-  //     swap(value, other.value);
-  //     return *this;
-  // }
-  // constexpr auto&operator=(const item&&other){
-  //     value = other.value;
-  //     return *this;
-  // }
-
   TREAP_CONSTEXPR_AFTER_CXX17
   static void make(void *) {}
   TREAP_CONSTEXPR_AFTER_CXX17
@@ -127,24 +112,13 @@ TEST_CASE(iterators) {
   constexpr_assert(t.end() - t.begin() == 3);
 }
 
-TREAP_CONSTEXPR_AFTER_CXX17 size_t constexpr_seed() {
-  size_t seed = 0;
-  const char *str = __TIME__ __DATE__ __TIMESTAMP__;
-  while (str[0]) {
-    seed *= 67;
-    seed += str++[0];
-  }
-  return seed;
-}
-
 template <typename T, size_t start> struct call_from_tuple {
   TREAP_CONSTEXPR_AFTER_CXX17
   void call(T &t, size_t n) {
     if (n == start - 1) {
       std::get<start - 1>(t)();
     } else {
-      call_from_tuple<T, (start + 1) % (std::tuple_size<T>::value + 1)>().call(
-          t, n);
+      call_from_tuple<T, (start + 1) % (std::tuple_size_v<T> + 1)>().call(t, n);
     }
   }
 };
@@ -207,20 +181,18 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM &&out, size_t seed) {
         auto &vector = vectors[current];
         constexpr_assert(treap.first.size() == vector.size());
         size_t n = value % (treap.first.size() + 1);
-        treaps.back().first =
-            [n](decltype(treaps[0].first.root()) t) mutable {
-              auto child = t->get_child(0);
-              auto child_size = child ? child->size_ : 0;
-              if (n >= child_size + 1) {
-                n -= child_size + 1;
-                return true;
-              }
-              return false;
-            } |
-            treap.first;
+        treaps.back().first = [n](decltype(treaps[0].first.root()) t) mutable {
+          auto child = t->get_child(0);
+          auto child_size = child ? child->size_ : 0;
+          if (n >= child_size + 1) {
+            n -= child_size + 1;
+            return true;
+          }
+          return false;
+        } | treap.first;
         copy(vector.begin(), vector.begin() + n,
              back_insert_iterator<
-                 typename std::decay<decltype(vectors.back())>::type>(
+                 typename std::decay_t<decltype(vectors.back())>>(
                  vectors.back()));
         rotate(vector.begin(), vector.begin() + n, vector.end());
         vector.resize(vector.size() - n);
@@ -340,11 +312,10 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM &&out, size_t seed) {
           vectors.erase(vectors.begin() + index);
           current -= current == treaps.size();
         }
-      }
-  );
+      });
   for (size_t q = 0; q < 2; ++q) {
-    op = rand() % (tuple_size<decltype(operations)>::value + 2);
-    if (op >= tuple_size<decltype(operations)>::value) {
+    op = rand() % (tuple_size_v<decltype(operations)> + 2);
+    if (op >= tuple_size_v<decltype(operations)>) {
       op -= 2;
     }
     value = rand();
@@ -389,7 +360,7 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool test(bool run, OSTREAM &&out, size_t seed) {
   return true;
 }
 
-TEST_CASE(bulk_all) {
+TEST_CASE(bulk_all) { // TODO: examine and fix
   size_t seed = 0x123;
   seed = constexpr_seed();
   auto out = null_out();
@@ -402,4 +373,3 @@ static_assert(RUN_ALL_TESTS());
 #endif
 
 int main() { RUN_ALL_TESTS(); }
-

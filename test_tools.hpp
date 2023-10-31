@@ -13,7 +13,7 @@ void constexpr_assert(bool b) {
 #if defined(__has_feature) && __has_feature(address_sanitizer) ||              \
     defined(__SANITIZE_ADDRESS__)
     std::vector<int> v(1);
-    for (size_t q = 0;q<(1LLU<<60); ++q){
+    for (size_t q = 0; q < (1LLU << 60); ++q) {
       v.push_back(v[v.size()]); // cause asan to display stack trace
     }
 #endif
@@ -55,3 +55,13 @@ TREAP_CONSTEXPR_AFTER_CXX17 bool run_all_tests(bool not_run = false) {
 }
 
 #define RUN_ALL_TESTS() run_all_tests<0, __COUNTER__>()
+
+TREAP_CONSTEXPR_AFTER_CXX17 size_t constexpr_seed() {
+  size_t seed = 0;
+  const char *str = __TIME__ __DATE__ __TIMESTAMP__;
+  while (str[0]) {
+    seed *= 67;
+    seed += str++[0];
+  }
+  return seed;
+}
